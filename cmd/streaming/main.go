@@ -23,11 +23,10 @@ import (
 	grpcMiddleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpcZap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
 	grpcRetry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
-	"github.com/natun-ai/natun/pkg/sdk"
-	coreApi "github.com/natun-ai/natun/proto/gen/go/natun/core/v1alpha1"
 	"github.com/natun-ai/streaming-runner/internal/manager"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	pbRuntime "go.buf.build/natun/api-go/natun/runtime/natun/runtime/v1alpha1"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"os"
@@ -42,7 +41,7 @@ func main() {
 	pflag.Bool("production", true, "Set as production")
 	pflag.String("dataconnector-resource", "", "The resource name of the DataConnector")
 	pflag.String("dataconnector-namespace", "", "The namespace name of the DataConnector")
-	pflag.String("core-grpc-url", "", "The gRPC URL of the Natun's Core")
+	pflag.String("runtime-grpc-url", "http://localhost:70001", "The gRPC URL of the Natun Runtime")
 	pflag.Parse()
 	must(viper.BindPFlags(pflag.CommandLine))
 
@@ -58,24 +57,24 @@ func main() {
 	}
 
 	cc, err := grpc.Dial(
-		viper.GetString("core-grpc-url"),
+		viper.GetString("runtime-grpc-url"),
 		grpc.WithStreamInterceptor(grpcMiddleware.ChainStreamClient(
-			grpcZap.StreamClientInterceptor(zl.Named("core")),
+			grpcZap.StreamClientInterceptor(zl.Named("runtime")),
 			grpcRetry.StreamClientInterceptor(),
 		)),
 		grpc.WithUnaryInterceptor(grpcMiddleware.ChainUnaryClient(
-			grpcZap.UnaryClientInterceptor(zl.Named("core")),
+			grpcZap.UnaryClientInterceptor(zl.Named("runtime")),
 			grpcRetry.UnaryClientInterceptor(),
 		)),
 	)
 	must(err)
-	engine := sdk.NewGRPCEngine(coreApi.NewEngineServiceClient(cc))
+	runtime := pbRuntime.NewRuntimeServiceClient(cc)
 
 	conn := client.ObjectKey{
 		Name:      viper.GetString("dataconnector-resource"),
 		Namespace: viper.GetString("dataconnector-namespace"),
 	}
-	mgr, err := manager.New(conn, engine, ctrl.GetConfigOrDie(), logger.WithName("manager"))
+	mgr, err := manager.New(conn, runtime, ctrl.GetConfigOrDie(), logger.WithName("manager"))
 	must(err)
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)

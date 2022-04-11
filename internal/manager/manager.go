@@ -2,13 +2,12 @@ package manager
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/go-logr/logr"
-	"github.com/natun-ai/natun/pkg/api"
+	"github.com/google/uuid"
 	natunApi "github.com/natun-ai/natun/pkg/api/v1alpha1"
 	"github.com/natun-ai/streaming-runner/pkg/brokers"
-	"github.com/natun-ai/streaming-runner/pkg/protoregistry"
+	pbRuntime "go.buf.build/natun/api-go/natun/runtime/natun/runtime/v1alpha1"
 	"gocloud.dev/pubsub"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/rest"
@@ -16,22 +15,22 @@ import (
 	"net/url"
 	ctrlCache "sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"strings"
 )
 
 type Manager interface {
-	Start(ctx context.Context) error
+	Start(context.Context) error
+	Ready(context.Context) bool
 }
 type manager struct {
-	client     ctrlCache.Cache
-	logger     logr.Logger
-	cancel     context.CancelFunc
-	engine     api.Engine
-	brokerType string
-	conn       client.ObjectKey
+	client  ctrlCache.Cache
+	logger  logr.Logger
+	cancel  context.CancelFunc
+	conn    client.ObjectKey
+	runtime pbRuntime.RuntimeServiceClient
+	ready   bool
 }
 
-func New(conn client.ObjectKey, engine api.Engine, cfg *rest.Config, logger logr.Logger) (Manager, error) {
+func New(conn client.ObjectKey, runtime pbRuntime.RuntimeServiceClient, cfg *rest.Config, logger logr.Logger) (Manager, error) {
 	c, err := ctrlCache.New(cfg, ctrlCache.Options{
 		Namespace: conn.Namespace,
 		DefaultSelector: ctrlCache.ObjectSelector{
@@ -43,10 +42,14 @@ func New(conn client.ObjectKey, engine api.Engine, cfg *rest.Config, logger logr
 	}
 
 	return &manager{
-		client: c,
-		logger: logger,
-		engine: engine,
+		client:  c,
+		logger:  logger,
+		runtime: runtime,
 	}, nil
+}
+
+func (m *manager) Ready(_ context.Context) bool {
+	return m.ready
 }
 
 func (m *manager) Start(ctx context.Context) error {
@@ -85,16 +88,15 @@ func (m *manager) Start(ctx context.Context) error {
 type BaseStreaming struct {
 	BrokerKind string
 	Workers    int
-	Schema     string
+	Schema     *url.URL
 
-	schemaPack   string
-	schemaMsg    string
 	subscription *pubsub.Subscription
 	mdExtractor  brokers.MetadataExtractor
 	features     []*Feature
 }
 
 func (m *manager) Add(ctx context.Context, in *natunApi.DataConnector) {
+	m.ready = false
 	if in.Spec.Kind != "streaming" {
 		m.logger.Error(fmt.Errorf("unsupported DataConenctor kind: %s", in.Spec.Kind), "kind is not streaming")
 		return
@@ -116,21 +118,11 @@ func (m *manager) Add(ctx context.Context, in *natunApi.DataConnector) {
 	}
 	bs.BrokerKind = in.Spec.Kind
 
-	if bs.Schema != "" {
-		u, err := url.Parse(bs.Schema)
-		if err == nil && u.Scheme != "" && u.Host != "" {
-			pack, err := protoregistry.Register(bs.Schema)
-			if err != nil && !errors.Is(err, protoregistry.ErrAlreadyRegistered) {
-				m.logger.Error(err, "failed to register proto schema")
-			}
-			if u.Fragment != "" {
-				if strings.Count(u.Fragment, ".") < 1 {
-					bs.schemaMsg = fmt.Sprintf("%s.%s", pack, u.Fragment)
-				} else {
-					bs.schemaMsg = u.Fragment
-				}
-			}
-			bs.schemaPack = pack
+	if bs.Schema != nil {
+		err := m.registerSchema(ctx, bs.Schema.String())
+		if err != nil {
+			m.logger.Error(err, "failed to register schema")
+			return
 		}
 	}
 
@@ -163,6 +155,7 @@ func (m *manager) Add(ctx context.Context, in *natunApi.DataConnector) {
 
 	bs.features = m.getFeatureDefinitions(ctx, in, bs)
 	m.subscribe(ctx, bs)
+	m.ready = true
 }
 
 func (m *manager) Update(ctx context.Context, _ *natunApi.DataConnector, in *natunApi.DataConnector) {
@@ -199,4 +192,8 @@ func (m *manager) subscribe(ctx context.Context, bs BaseStreaming) {
 			}
 		}()
 	}
+}
+
+func newUUID() string {
+	return uuid.New().String()
 }

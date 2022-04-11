@@ -3,26 +3,56 @@ package manager
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"github.com/go-logr/logr"
+	ceProto "github.com/cloudevents/sdk-go/binding/format/protobuf/v2"
+	cloudevents "github.com/cloudevents/sdk-go/v2"
 	natunApi "github.com/natun-ai/natun/pkg/api/v1alpha1"
-	"github.com/natun-ai/natun/pkg/pyexp"
 	"github.com/natun-ai/streaming-runner/pkg/brokers"
-	"github.com/natun-ai/streaming-runner/pkg/protoregistry"
-	"go.starlark.net/lib/proto"
-	"go.starlark.net/starlark"
+	pbRuntime "go.buf.build/natun/api-go/natun/runtime/natun/runtime/v1alpha1"
 	"gocloud.dev/pubsub"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/anypb"
 	"net/url"
 	"strings"
 )
 
 type Feature struct {
-	natunApi.FeatureBuilderType `json:",inline"`
+	natunApi.FeatureBuilderKind `json:",inline"`
 	FQN                         string `json:"-"`
 	Schema                      string `json:"schema,omitempty"`
 	Expression                  string `json:"expression"`
-	runtime                     pyexp.Runtime
+	programSha1                 string
+}
+
+func (m *manager) registerSchema(ctx context.Context, schema string) error {
+	uuid := newUUID()
+	resp, err := m.runtime.RegisterSchema(ctx, &pbRuntime.RegisterSchemaRequest{
+		Uuid:   uuid,
+		Schema: schema,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to register schema: %w", err)
+	}
+	if resp.GetUuid() != uuid {
+		return fmt.Errorf("failed to register schema: unexpected uuid")
+	}
+	return nil
+}
+func (m *manager) registerProgram(ctx context.Context, ft *Feature) error {
+	uuid := newUUID()
+	resp, err := m.runtime.LoadPyExpProgram(ctx, &pbRuntime.LoadPyExpProgramRequest{
+		Uuid:    uuid,
+		Program: ft.Expression,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to register program: %w", err)
+	}
+	if resp.GetUuid() != uuid {
+		return fmt.Errorf("failed to register program: unexpected uuid")
+	}
+	ft.programSha1 = resp.GetProgramSha1()
+	return nil
 }
 
 // if a particular feature extraction has failed, it should log it and allow other to live in peace
@@ -32,6 +62,10 @@ func (m *manager) getFeatureDefinitions(ctx context.Context, in *natunApi.DataCo
 	for _, ref := range in.Status.Features {
 		m.logger.V(1).Info(fmt.Sprintf("fetching feature definition: %s", ref.Name))
 
+		// fix connector namespace
+		if ref.Namespace == "" {
+			ref.Namespace = in.Namespace
+		}
 		ft, err := m.getFeature(ctx, ref, bsc)
 		if err != nil {
 			m.logger.Error(err, "failed to fetch feature")
@@ -53,95 +87,94 @@ func (m *manager) getFeature(ctx context.Context, ref natunApi.ResourceReference
 		return nil, fmt.Errorf("failed to unmarshal feature definition: %w", err)
 	}
 
-	if ft.FeatureBuilderType.Kind != "streaming" {
-		return nil, fmt.Errorf("feature definition kind is not supported: %s", ft.FeatureBuilderType.Kind)
+	if ft.FeatureBuilderKind.Kind != "streaming" {
+		return nil, fmt.Errorf("feature definition kind is not supported: %s", ft.FeatureBuilderKind.Kind)
 	}
 	ft.FQN = ftSpec.FQN()
 
 	if ft.Schema != "" {
 		u, err := url.Parse(ft.Schema)
 		if err == nil && u.Scheme != "" && u.Host != "" && u.Fragment != "" {
-			pack, err := protoregistry.Register(ft.Schema)
-			if err != nil && !errors.Is(err, protoregistry.ErrAlreadyRegistered) {
-				return nil, fmt.Errorf("failed to register proto schema: %w", err)
-			}
-			ft.Schema = u.Fragment
-			if strings.Count(ft.Schema, ".") < 1 {
-				ft.Schema = fmt.Sprintf("%s.%s", pack, ft.Schema)
+			if !(u.Scheme == bs.Schema.Scheme && u.Host == bs.Schema.Host) {
+				err := m.registerSchema(ctx, ft.Schema)
+				if err != nil {
+					return nil, fmt.Errorf("failed to register schema: %w", err)
+				}
 			}
 		} else {
-			if bs.schemaPack != "" && strings.Count(ft.Schema, ".") < 1 {
-				ft.Schema = fmt.Sprintf("%s.%s", bs.schemaPack, ft.Schema)
-			}
+			u := &url.URL{}
+			*u = *bs.Schema
+			u.Fragment = ft.Schema
+			ft.Schema = u.String()
 		}
+	} else {
+		ft.Schema = bs.Schema.String()
 	}
 
-	ft.runtime, err = pyexp.New(ft.FQN, ft.Expression, m.engine)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create feature runtime: %w", err)
-	}
-
-	return ft, nil
+	return ft, m.registerProgram(ctx, ft)
 }
 
 func (m *manager) handle(ctx context.Context, msg *pubsub.Message, md brokers.Metadata, bs BaseStreaming) error {
 	for _, ft := range bs.features {
-		var payload starlark.Value
-		schema := ""
-		if ft.Schema != "" {
-			schema = ft.Schema
-		} else if bs.schemaMsg != "" {
-			schema = bs.schemaMsg
-		}
-		if schema != "" {
-			md, err := protoregistry.GetDescriptor(ft.Schema)
-			if err != nil {
-				return fmt.Errorf("failed to find proto type for message")
+		ev := cloudevents.NewEvent()
+		ev.SetID(md.ID)
+		ev.SetSource(m.conn.String())
+		ev.SetTime(md.Timestamp)
+		ev.SetDataSchema(ft.Schema)
+		ev.SetSubject(md.Topic)
+
+		contentType := ""
+		u := url.URL{}
+		for k, v := range msg.Metadata {
+			if strings.ToLower(k) == "content-type" {
+				contentType = v
 			}
-
-			payload, err = proto.Unmarshal(md, msg.Body)
-			if err != nil {
-				return fmt.Errorf("failed to parse message to proto")
-			}
-		} else {
-			payload = starlark.String(msg.Body)
+			u.Query().Add(k, v)
 		}
+		// Encode the parameters.
+		u.RawQuery = u.Query().Encode()
+		ev.SetExtension("headers", u)
 
-		headers := fixHeaders(msg.Metadata)
-		headers["X-NATUN-STREAMING-TOPIC"] = []string{md.Topic}
-		headers["X-NATUN-STREAMING-ID"] = []string{md.ID}
-
-		val, ts, eid, err := ft.runtime.Exec(ctx, pyexp.ExecRequest{
-			Headers:   headers,
-			Payload:   payload,
-			Fqn:       ft.FQN,
-			Timestamp: md.Timestamp,
-			Logger:    logr.Logger{},
-		})
-
+		err := ev.SetData(contentType, msg.Body)
 		if err != nil {
-			m.logger.Error(err, "failed to execute feature")
-			continue
+			return fmt.Errorf("failed to set data: %w", err)
 		}
-		if val != nil {
-			if eid == "" {
-				m.logger.Error(fmt.Errorf("feature did not return an entity id"), "failed to execute feature")
-				continue
+
+		pb, err := ceProto.ToProto(&ev)
+		if err != nil {
+			return fmt.Errorf("failed to convert event to protobuf: %w", err)
+		}
+		data, err := anypb.New(pb)
+		if err != nil {
+			return fmt.Errorf("failed to create anypb: %w", err)
+		}
+
+		req := &pbRuntime.ExecutePyExpRequest{
+			Uuid:        newUUID(),
+			Fqn:         ft.FQN,
+			ProgramSha1: ft.programSha1,
+			EntityId:    nil,
+			Data:        data,
+		}
+		tries := 1
+	exec:
+		resp, err := m.runtime.ExecutePyExp(ctx, req)
+		if err != nil {
+			if status.Code(err) == codes.NotFound {
+				err := m.registerProgram(ctx, ft)
+				if err != nil {
+					return fmt.Errorf("failed to register program: %w", err)
+				}
+				if tries < 3 {
+					tries++
+					goto exec
+				}
 			}
-			err := m.engine.Update(ctx, ft.FQN, eid, val, ts)
-			if err != nil {
-				m.logger.Error(err, "failed to update feature")
-				continue
-			}
+			return fmt.Errorf("failed to execute program: %w", err)
+		}
+		if resp.GetUuid() != req.GetUuid() {
+			return fmt.Errorf("failed to execute program: unexpected uuid")
 		}
 	}
 	return nil
-}
-
-func fixHeaders(metadata map[string]string) map[string][]string {
-	headers := make(map[string][]string)
-	for k, v := range metadata {
-		headers[k] = []string{v}
-	}
-	return headers
 }
