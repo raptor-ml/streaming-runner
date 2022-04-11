@@ -13,7 +13,7 @@ require (
 	github.com/natun-ai/natun v0.0.0-00010101000000-000000000000
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.10.1
-	go.buf.build/natun/api-go/natun/runtime v1.1.6
+	go.buf.build/natun/api-go/natun/runtime v1.1.7
 	go.opencensus.io v0.23.0
 	go.opentelemetry.io/otel v1.6.2
 	go.opentelemetry.io/otel/bridge/opencensus v0.28.0
@@ -121,5 +121,3 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.1 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
-
-replace github.com/natun-ai/natun => ../natun

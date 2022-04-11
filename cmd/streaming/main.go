@@ -41,7 +41,7 @@ func main() {
 	pflag.Bool("production", true, "Set as production")
 	pflag.String("dataconnector-resource", "", "The resource name of the DataConnector")
 	pflag.String("dataconnector-namespace", "", "The namespace name of the DataConnector")
-	pflag.String("runtime-grpc-url", "http://localhost:70001", "The gRPC URL of the Natun Runtime")
+	pflag.String("runtime-grpc-url", "http://localhost:70005", "The gRPC URL of the Natun Runtime")
 	pflag.Parse()
 	must(viper.BindPFlags(pflag.CommandLine))
 
