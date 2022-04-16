@@ -19,9 +19,9 @@ import (
 
 type Feature struct {
 	natunApi.FeatureBuilderKind `json:",inline"`
-	FQN                         string `json:"-"`
 	Schema                      string `json:"schema,omitempty"`
-	Expression                  string `json:"expression"`
+	Expression                  string `json:"pyexp"`
+	fqn                         string
 	programSha1                 string
 }
 
@@ -90,7 +90,7 @@ func (m *manager) getFeature(ctx context.Context, ref natunApi.ResourceReference
 	if ft.FeatureBuilderKind.Kind != "streaming" {
 		return nil, fmt.Errorf("feature definition kind is not supported: %s", ft.FeatureBuilderKind.Kind)
 	}
-	ft.FQN = ftSpec.FQN()
+	ft.fqn = ftSpec.FQN()
 
 	if ft.Schema != "" {
 		u, err := url.Parse(ft.Schema)
@@ -151,7 +151,7 @@ func (m *manager) handle(ctx context.Context, msg *pubsub.Message, md brokers.Me
 
 		req := &pbRuntime.ExecutePyExpRequest{
 			Uuid:        newUUID(),
-			Fqn:         ft.FQN,
+			Fqn:         ft.fqn,
 			ProgramSha1: ft.programSha1,
 			EntityId:    nil,
 			Data:        data,
