@@ -10,7 +10,7 @@ require (
 	github.com/go-logr/zapr v1.2.3
 	github.com/google/uuid v1.3.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
-	github.com/natun-ai/natun v0.0.0-00010101000000-000000000000
+	github.com/natun-ai/natun v0.0.2-alpha2.0.20220416083536-e917575ab45e
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.10.1
 	go.buf.build/natun/api-go/natun/runtime v1.1.7
