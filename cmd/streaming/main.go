@@ -26,7 +26,7 @@ import (
 	"github.com/natun-ai/streaming-runner/internal/manager"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
-	pbRuntime "go.buf.build/natun/api-go/natun/runtime/natun/runtime/v1alpha1"
+	pbRuntime "go.buf.build/natun/api-go/natun/core/natun/runtime/v1alpha1"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"os"

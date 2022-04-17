@@ -7,7 +7,7 @@ import (
 	"github.com/google/uuid"
 	natunApi "github.com/natun-ai/natun/pkg/api/v1alpha1"
 	"github.com/natun-ai/streaming-runner/pkg/brokers"
-	pbRuntime "go.buf.build/natun/api-go/natun/runtime/natun/runtime/v1alpha1"
+	pbRuntime "go.buf.build/natun/api-go/natun/core/natun/runtime/v1alpha1"
 	"gocloud.dev/pubsub"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/rest"
