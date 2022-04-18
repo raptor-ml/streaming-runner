@@ -22,7 +22,7 @@ type Feature struct {
 	Schema                      string `json:"schema,omitempty"`
 	Expression                  string `json:"pyexp"`
 	fqn                         string
-	programSha1                 string
+	programHash                 string
 }
 
 func (m *manager) registerSchema(ctx context.Context, schema string) error {
@@ -45,13 +45,14 @@ func (m *manager) registerProgram(ctx context.Context, ft *Feature) error {
 		Uuid:    uuid,
 		Program: ft.Expression,
 	})
+
 	if err != nil {
 		return fmt.Errorf("failed to register program: %w", err)
 	}
 	if resp.GetUuid() != uuid {
 		return fmt.Errorf("failed to register program: unexpected uuid")
 	}
-	ft.programSha1 = resp.GetProgramSha1()
+	ft.programHash = resp.GetProgramHash()
 	return nil
 }
 
@@ -152,7 +153,7 @@ func (m *manager) handle(ctx context.Context, msg *pubsub.Message, md brokers.Me
 		req := &pbRuntime.ExecutePyExpRequest{
 			Uuid:        newUUID(),
 			Fqn:         ft.fqn,
-			ProgramSha1: ft.programSha1,
+			ProgramHash: ft.programHash,
 			EntityId:    nil,
 			Data:        data,
 		}
