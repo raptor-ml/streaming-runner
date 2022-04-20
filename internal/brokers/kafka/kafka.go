@@ -81,19 +81,25 @@ func (p *provider) Subscribe(ctx context.Context, c v1alpha1.ParsedConfig) (cont
 	}
 
 	if cfg.ConsumerGroup == "" {
-		cfg.ConsumerGroup = c["_fqn"]
+		dc := brokers.DataConnectorFromContext(ctx)
+		if dc == nil {
+			panic("no DataConnector in context")
+		}
+		cfg.ConsumerGroup = fmt.Sprintf("%s.%s", dc.Name, dc.Namespace)
 	}
 
 	// The Kafka client configuration to use.
 	config := kafkapubsub.MinimalConfig()
 
-	if ver, err := sarama.ParseKafkaVersion(cfg.Version); err == nil {
-		if ver.IsAtLeast(config.Version) {
-			return ctx, nil, fmt.Errorf("kafka version %s is not supported", cfg.Version)
+	if cfg.Version != "" {
+		if ver, err := sarama.ParseKafkaVersion(cfg.Version); err == nil {
+			if ver.IsAtLeast(config.Version) {
+				return ctx, nil, fmt.Errorf("kafka version %s is not supported", cfg.Version)
+			}
+			config.Version = ver
+		} else {
+			return ctx, nil, fmt.Errorf("failed to parse kafka version: %w", err)
 		}
-		config.Version = ver
-	} else {
-		return ctx, nil, fmt.Errorf("failed to parse kafka version: %w", err)
 	}
 
 	if io, err := parseInitialOffset(cfg.InitialOffset); err != nil {

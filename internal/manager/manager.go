@@ -118,6 +118,8 @@ func (m *manager) Add(ctx context.Context, in *natunApi.DataConnector) {
 		return
 	}
 
+	ctx = brokers.ContextWithDataConnector(ctx, in)
+
 	cfg, err := in.ParseConfig(ctx, m.client)
 	if err != nil {
 		m.logger.Error(err, "failed to retrieve config")

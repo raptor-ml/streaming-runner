@@ -18,7 +18,7 @@ package brokers
 
 import (
 	"context"
-	"github.com/natun-ai/natun/pkg/api/v1alpha1"
+	natunApi "github.com/natun-ai/natun/pkg/api/v1alpha1"
 	"gocloud.dev/pubsub"
 	"time"
 )
@@ -34,5 +34,20 @@ type Unmarshaler func(any) error
 
 type Broker interface {
 	Metadata(context.Context, *pubsub.Message) Metadata
-	Subscribe(context.Context, v1alpha1.ParsedConfig) (context.Context, *pubsub.Subscription, error)
+	Subscribe(context.Context, natunApi.ParsedConfig) (context.Context, *pubsub.Subscription, error)
+}
+
+type ctxKey string
+
+const dataConnectorCtxKey ctxKey = "DataConnector"
+
+func ContextWithDataConnector(ctx context.Context, dc *natunApi.DataConnector) context.Context {
+	return context.WithValue(ctx, dataConnectorCtxKey, dc)
+}
+func DataConnectorFromContext(ctx context.Context) *natunApi.DataConnector {
+	v := ctx.Value(dataConnectorCtxKey)
+	if v == nil {
+		return nil
+	}
+	return v.(*natunApi.DataConnector)
 }
