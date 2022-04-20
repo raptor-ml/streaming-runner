@@ -19,6 +19,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/go-logr/logr"
 	"github.com/go-logr/zapr"
 	grpcMiddleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpcZap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
@@ -37,11 +38,16 @@ import (
 	"syscall"
 )
 
+// version is being overridden in build time
+var version = "master"
+
+var setupLog logr.Logger
+
 func main() {
 	pflag.Bool("production", true, "Set as production")
 	pflag.String("dataconnector-resource", "", "The resource name of the DataConnector")
 	pflag.String("dataconnector-namespace", "", "The namespace name of the DataConnector")
-	pflag.String("runtime-grpc-url", "http://localhost:60005", "The gRPC URL of the Natun Runtime")
+	pflag.String("runtime-grpc-addr", ":60005", "The gRPC Address of the Natun Runtime")
 	pflag.Parse()
 	must(viper.BindPFlags(pflag.CommandLine))
 
@@ -50,14 +56,14 @@ func main() {
 
 	zl := logger()
 	logger := zapr.NewLogger(zl)
+	setupLog = logger.WithName("setup")
 
 	if viper.GetString("dataconnector-resource") == "" || viper.GetString("dataconnector-namespace") == "" {
-		logger.Error(fmt.Errorf("missing required configuration"), "`dataconnector-resource` and `dataconnector-namespace` are required")
-		os.Exit(30)
+		must(fmt.Errorf("`dataconnector-resource` and `dataconnector-namespace` are required"))
 	}
 
 	cc, err := grpc.Dial(
-		viper.GetString("runtime-grpc-url"),
+		viper.GetString("runtime-grpc-addr"),
 		grpc.WithStreamInterceptor(grpcMiddleware.ChainStreamClient(
 			grpcZap.StreamClientInterceptor(zl.Named("runtime")),
 			grpcRetry.StreamClientInterceptor(),
@@ -78,6 +84,8 @@ func main() {
 	must(err)
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+
+	setupLog.Info("Starting streaming-runner", "version", version)
 	err = mgr.Start(ctx)
 	must(err)
 	defer cancel()
@@ -98,7 +106,11 @@ func logger() *zap.Logger {
 
 func must(err error) {
 	if err != nil {
-		fmt.Println(err)
+		if setupLog.GetSink() != nil {
+			setupLog.Error(err, "failed to start")
+		} else {
+			fmt.Println(err)
+		}
 		os.Exit(1)
 	}
 }
