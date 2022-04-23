@@ -30,6 +30,7 @@ import (
 	pbRuntime "go.buf.build/natun/api-go/natun/core/natun/runtime/v1alpha1"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/local"
 	"os"
 	"os/signal"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -72,6 +73,7 @@ func main() {
 			grpcZap.UnaryClientInterceptor(zl.Named("runtime")),
 			grpcRetry.UnaryClientInterceptor(),
 		)),
+		grpc.WithTransportCredentials(local.NewCredentials()),
 	)
 	must(err)
 	runtime := pbRuntime.NewRuntimeServiceClient(cc)
