@@ -13,7 +13,7 @@ require (
 	github.com/natun-ai/natun v0.0.2-alpha2.0.20220416083536-e917575ab45e
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.10.1
-	go.buf.build/natun/api-go/natun/core v1.1.6
+	go.buf.build/natun/api-go/natun/core v1.1.7
 	go.opencensus.io v0.23.0
 	go.opentelemetry.io/otel v1.6.2
 	go.opentelemetry.io/otel/bridge/opencensus v0.28.0
