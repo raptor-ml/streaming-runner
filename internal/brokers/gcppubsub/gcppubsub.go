@@ -19,7 +19,7 @@ package gcppubsub
 import (
 	"context"
 	"fmt"
-	"github.com/natun-ai/natun/pkg/api/v1alpha1"
+	"github.com/natun-ai/natun/api/v1alpha1"
 	"github.com/natun-ai/streaming-runner/pkg/brokers"
 	"gocloud.dev/gcp"
 	"gocloud.dev/pubsub"

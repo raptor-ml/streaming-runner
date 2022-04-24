@@ -22,7 +22,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"github.com/Shopify/sarama"
-	"github.com/natun-ai/natun/pkg/api/v1alpha1"
+	"github.com/natun-ai/natun/api/v1alpha1"
 	"github.com/natun-ai/streaming-runner/pkg/brokers"
 	"gocloud.dev/pubsub"
 	"gocloud.dev/pubsub/kafkapubsub"

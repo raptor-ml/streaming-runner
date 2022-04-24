@@ -6,7 +6,7 @@ import (
 	"fmt"
 	ceProto "github.com/cloudevents/sdk-go/binding/format/protobuf/v2"
 	cloudevents "github.com/cloudevents/sdk-go/v2"
-	natunApi "github.com/natun-ai/natun/pkg/api/v1alpha1"
+	natunApi "github.com/natun-ai/natun/api/v1alpha1"
 	"github.com/natun-ai/streaming-runner/pkg/brokers"
 	pbRuntime "go.buf.build/natun/api-go/natun/core/natun/runtime/v1alpha1"
 	"gocloud.dev/pubsub"
