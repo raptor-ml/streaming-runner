@@ -28,7 +28,8 @@ jobs:
         uses: actions-cool/issues-helper@v3
         with:
           actions: 'create-issue'
-          token: ${{ secrets.GITHUB_TOKEN }}
+          repo: natun-ai/natun
+          token: ${{ secrets.ACTIONS_PAT }}
           title: 🛑 Disallowed licence for ${{ github.sha }}
           body: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
           labels: bug

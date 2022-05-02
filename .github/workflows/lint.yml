@@ -28,9 +28,6 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
-      - name: Make generate
-        run: make generate
-        shell: bash
       - name: Run linter
         uses: golangci/golangci-lint-action@v3
         with:
@@ -44,8 +41,8 @@ jobs:
         uses: actions-cool/issues-helper@v3
         with:
           actions: 'create-issue'
-          token: ${{ secrets.GITHUB_TOKEN }}
-          repo: natun
+          token: ${{ secrets.ACTIONS_PAT }}
+          repo: natun-ai/natun
           title: 🐛 Lint failed for ${{ github.sha }}
           body: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
           labels: bug, component/streaming
