@@ -59,6 +59,7 @@ func (m *manager) registerProgram(ctx context.Context, ft *Feature) error {
 	uuid := newUUID()
 	resp, err := m.runtime.LoadPyExpProgram(ctx, &pbRuntime.LoadPyExpProgramRequest{
 		Uuid:    uuid,
+		Fqn:     ft.fqn,
 		Program: ft.Expression,
 	})
 
