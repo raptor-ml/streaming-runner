@@ -24,6 +24,8 @@ import (
 	grpcMiddleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpcZap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
 	grpcRetry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
+	natunApi "github.com/natun-ai/natun/api/v1alpha1"
+	_ "github.com/natun-ai/streaming-runner/internal/brokers"
 	"github.com/natun-ai/streaming-runner/internal/manager"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -31,6 +33,8 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/local"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"os"
 	"os/signal"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -43,6 +47,13 @@ import (
 var version = "master"
 
 var setupLog logr.Logger
+
+func init() {
+	utilruntime.Must(clientgoscheme.AddToScheme(clientgoscheme.Scheme))
+
+	utilruntime.Must(natunApi.AddToScheme(clientgoscheme.Scheme))
+	//+kubebuilder:scaffold:scheme
+}
 
 func main() {
 	pflag.Bool("production", true, "Set as production")

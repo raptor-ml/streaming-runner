@@ -110,23 +110,21 @@ func (m *manager) getFeature(ctx context.Context, ref natunApi.ResourceReference
 	}
 	ft.fqn = ftSpec.FQN()
 
+	if ft.Schema == "" && bs.Schema != nil {
+		ft.Schema = bs.Schema.String()
+	}
 	if ft.Schema != "" {
 		u, err := url.Parse(ft.Schema)
 		if err == nil && u.Scheme != "" && u.Host != "" && u.Fragment != "" {
-			if !(u.Scheme == bs.Schema.Scheme && u.Host == bs.Schema.Host) {
+			if !(bs.Schema != nil && u.Scheme == bs.Schema.Scheme && u.Host == bs.Schema.Host) {
 				err := m.registerSchema(ctx, ft.Schema)
 				if err != nil {
 					return nil, fmt.Errorf("failed to register schema: %w", err)
 				}
 			}
 		} else {
-			u := &url.URL{}
-			*u = *bs.Schema
-			u.Fragment = ft.Schema
-			ft.Schema = u.String()
+			return nil, fmt.Errorf("invalid schema provided (did you mentioned the message type?)")
 		}
-	} else {
-		ft.Schema = bs.Schema.String()
 	}
 
 	return ft, m.registerProgram(ctx, ft)

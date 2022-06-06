@@ -48,22 +48,22 @@ func (p *provider) Metadata(_ context.Context, msg *pubsub.Message) brokers.Meta
 }
 
 type config struct {
-	Brokers       []string
-	Topics        []string
-	ConsumerGroup string
-	ClientID      string
+	Brokers       []string `json:"brokers"`
+	Topics        []string `json:"topics"`
+	ConsumerGroup string   `mapstructure:"consumer_group"`
+	ClientID      string   `mapstructure:"client_id"`
 
-	SaslUsername string
-	SaslPassword string
+	SaslUsername string `mapstructure:"sasl_username"`
+	SaslPassword string `mapstructure:"sasl_password"`
 
-	TLSDisable    bool
-	TLSSkipVerify bool
-	TLSCaCert     string
-	TLSClientCert string
-	TLSClientKey  string
+	TLSDisable    bool   `mapstructure:"tls_disable"`
+	TLSSkipVerify bool   `mapstructure:"tls_skip_verify"`
+	TLSCaCert     string `mapstructure:"tls_ca_cert"`
+	TLSClientCert string `mapstructure:"tls_client_cert"`
+	TLSClientKey  string `mapstructure:"tls_client_key"`
 
-	InitialOffset string
-	Version       string
+	InitialOffset string `mapstructure:"initial_offset"`
+	Version       string `mapstructure:"version"`
 }
 
 func (p *provider) Subscribe(ctx context.Context, c v1alpha1.ParsedConfig) (context.Context, *pubsub.Subscription, error) {

@@ -50,9 +50,9 @@ func (p *provider) Metadata(ctx context.Context, msg *pubsub.Message) brokers.Me
 
 type config struct {
 	ProjectID      string `mapstructure:"project_id"`
-	Topic          string
+	Topic          string `mapstructure:"topic"`
 	CredentialJSON []byte `mapstructure:"credential_json,omitempty"`
-	MaxBatchSize   int
+	MaxBatchSize   int    `mapstructure:"max_batch_size"`
 }
 
 func (p *provider) Subscribe(ctx context.Context, c v1alpha1.ParsedConfig) (context.Context, *pubsub.Subscription, error) {

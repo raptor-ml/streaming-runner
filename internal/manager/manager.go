@@ -43,6 +43,7 @@ type manager struct {
 	cancel  context.CancelFunc
 	conn    client.ObjectKey
 	runtime pbRuntime.RuntimeServiceClient
+	bs      *BaseStreaming
 	ready   bool
 }
 
@@ -102,7 +103,7 @@ func (m *manager) Start(ctx context.Context) error {
 }
 
 type BaseStreaming struct {
-	BrokerKind string
+	BrokerKind string `mapstructure:"kind"`
 	Workers    int
 	Schema     *url.URL
 
@@ -134,7 +135,6 @@ func (m *manager) Add(ctx context.Context, in *natunApi.DataConnector) {
 	if bs.Workers == 0 {
 		bs.Workers = 1
 	}
-	bs.BrokerKind = in.Spec.Kind
 
 	if bs.Schema != nil {
 		err := m.registerSchema(ctx, bs.Schema.String())
@@ -157,6 +157,7 @@ func (m *manager) Add(ctx context.Context, in *natunApi.DataConnector) {
 	m.cancel = cancel
 
 	// Create a new subscription
+	ctx = brokers.ContextWithDataConnector(ctx, in)
 	ctx, bs.subscription, err = broker.Subscribe(ctx, cfg)
 	if err != nil {
 		m.logger.Error(err, "failed to create subscription")
@@ -174,11 +175,14 @@ func (m *manager) Add(ctx context.Context, in *natunApi.DataConnector) {
 	bs.features = m.getFeatureDefinitions(ctx, in, bs)
 	m.subscribe(ctx, bs)
 	m.ready = true
+	m.bs = &bs
+	m.logger.Info("Listening for streaming events...")
 }
 
 func (m *manager) Update(ctx context.Context, _ *natunApi.DataConnector, in *natunApi.DataConnector) {
 	if m.cancel != nil {
 		m.cancel()
+		m.bs = nil
 	}
 
 	m.Add(ctx, in)
