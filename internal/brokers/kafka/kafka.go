@@ -22,8 +22,8 @@ import (
 	"crypto/x509"
 	"fmt"
 	"github.com/Shopify/sarama"
-	"github.com/natun-ai/natun/api/v1alpha1"
-	"github.com/natun-ai/streaming-runner/pkg/brokers"
+	"github.com/raptor-ml/natun/api/v1alpha1"
+	"github.com/raptor-ml/streaming-runner/pkg/brokers"
 	"gocloud.dev/pubsub"
 	"gocloud.dev/pubsub/kafkapubsub"
 	"strconv"
@@ -106,7 +106,7 @@ func (p *provider) Subscribe(ctx context.Context, c v1alpha1.ParsedConfig) (cont
 		config.Consumer.Offsets.Initial = io
 	}
 
-	cfg.ClientID = "consumer.k8s.natun.ai"
+	cfg.ClientID = "consumer.k8s.raptor.ml"
 	if cfg.ClientID != "" {
 		config.ClientID = cfg.ClientID
 	}

@@ -1,6 +1,6 @@
 VERSION ?= $(shell git rev-parse --short HEAD)
 
-IMAGE_BASE ?= ghcr.io/natun-ai/streaming-runner
+IMAGE_BASE ?= ghcr.io/raptor-ml/streaming-runner
 
 ## Configuring the environment mode
 ENV ?= dev

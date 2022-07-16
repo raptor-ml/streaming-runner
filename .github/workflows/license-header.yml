@@ -23,7 +23,7 @@ jobs:
         uses: actions-cool/issues-helper@v3
         with:
           actions: 'create-issue'
-          repo: natun-ai/natun
+          repo: raptor-ml/natun
           token: ${{ secrets.ACTIONS_PAT }}
           title: 🐛 License header missing for ${{ github.sha }}
           body: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}

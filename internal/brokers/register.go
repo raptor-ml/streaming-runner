@@ -17,6 +17,6 @@ limitations under the License.
 package brokers
 
 import (
-	_ "github.com/natun-ai/streaming-runner/internal/brokers/gcppubsub"
-	_ "github.com/natun-ai/streaming-runner/internal/brokers/kafka"
+	_ "github.com/raptor-ml/streaming-runner/internal/brokers/gcppubsub"
+	_ "github.com/raptor-ml/streaming-runner/internal/brokers/kafka"
 )

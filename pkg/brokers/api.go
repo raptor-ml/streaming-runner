@@ -18,7 +18,7 @@ package brokers
 
 import (
 	"context"
-	natunApi "github.com/natun-ai/natun/api/v1alpha1"
+	natunApi "github.com/raptor-ml/natun/api/v1alpha1"
 	"gocloud.dev/pubsub"
 	"time"
 )
