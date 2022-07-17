@@ -1,5 +1,5 @@
 /*
-Copyright 2022 Natun.
+Copyright (c) 2022 Raptor.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ package brokers
 
 import (
 	"context"
-	natunApi "github.com/raptor-ml/natun/api/v1alpha1"
+	raptorApi "github.com/raptor-ml/raptor/api/v1alpha1"
 	"gocloud.dev/pubsub"
 	"time"
 )
@@ -34,20 +34,20 @@ type Unmarshaler func(any) error
 
 type Broker interface {
 	Metadata(context.Context, *pubsub.Message) Metadata
-	Subscribe(context.Context, natunApi.ParsedConfig) (context.Context, *pubsub.Subscription, error)
+	Subscribe(context.Context, raptorApi.ParsedConfig) (context.Context, *pubsub.Subscription, error)
 }
 
 type ctxKey string
 
 const dataConnectorCtxKey ctxKey = "DataConnector"
 
-func ContextWithDataConnector(ctx context.Context, dc *natunApi.DataConnector) context.Context {
+func ContextWithDataConnector(ctx context.Context, dc *raptorApi.DataConnector) context.Context {
 	return context.WithValue(ctx, dataConnectorCtxKey, dc)
 }
-func DataConnectorFromContext(ctx context.Context) *natunApi.DataConnector {
+func DataConnectorFromContext(ctx context.Context) *raptorApi.DataConnector {
 	v := ctx.Value(dataConnectorCtxKey)
 	if v == nil {
 		return nil
 	}
-	return v.(*natunApi.DataConnector)
+	return v.(*raptorApi.DataConnector)
 }

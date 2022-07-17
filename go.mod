@@ -10,10 +10,10 @@ require (
 	github.com/go-logr/zapr v1.2.3
 	github.com/google/uuid v1.3.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
-	github.com/raptor-ml/natun v0.0.0-20220716123453-17320feeff27
+	github.com/raptor-ml/raptor v0.0.0-20220717224528-351ccfd7eeb4
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.12.0
-	go.buf.build/natun/api-go/natun/core v1.1.10
+	go.buf.build/raptor/api-go/raptor/core v1.7.1
 	go.opencensus.io v0.23.0
 	go.opentelemetry.io/otel v1.8.0
 	go.opentelemetry.io/otel/bridge/opencensus v0.31.0
@@ -91,7 +91,7 @@ require (
 	github.com/spf13/cast v1.5.0 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/subosito/gotenv v1.4.0 // indirect
-	go.buf.build/natun/api-go/envoyproxy/protoc-gen-validate v1.1.6 // indirect
+	go.buf.build/raptor/api-go/envoyproxy/protoc-gen-validate v1.7.6 // indirect
 	go.opentelemetry.io/otel/metric v0.31.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.8.0 // indirect
 	go.opentelemetry.io/otel/sdk/metric v0.31.0 // indirect

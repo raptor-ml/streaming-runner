@@ -1,5 +1,5 @@
 /*
-Copyright 2022 Natun.
+Copyright (c) 2022 Raptor.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"github.com/Shopify/sarama"
-	"github.com/raptor-ml/natun/api/v1alpha1"
+	"github.com/raptor-ml/raptor/api/v1alpha1"
 	"github.com/raptor-ml/streaming-runner/pkg/brokers"
 	"gocloud.dev/pubsub"
 	"gocloud.dev/pubsub/kafkapubsub"

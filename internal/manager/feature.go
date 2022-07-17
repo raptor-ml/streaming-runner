@@ -1,5 +1,5 @@
 /*
-Copyright 2022 Natun.
+Copyright (c) 2022 Raptor.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,9 +22,9 @@ import (
 	"fmt"
 	ceProto "github.com/cloudevents/sdk-go/binding/format/protobuf/v2"
 	cloudevents "github.com/cloudevents/sdk-go/v2"
-	natunApi "github.com/raptor-ml/natun/api/v1alpha1"
+	raptorApi "github.com/raptor-ml/raptor/api/v1alpha1"
 	"github.com/raptor-ml/streaming-runner/pkg/brokers"
-	pbRuntime "go.buf.build/natun/api-go/natun/core/natun/runtime/v1alpha1"
+	pbRuntime "go.buf.build/raptor/api-go/raptor/core/raptor/runtime/v1alpha1"
 	"gocloud.dev/pubsub"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -34,11 +34,11 @@ import (
 )
 
 type Feature struct {
-	natunApi.FeatureBuilderKind `json:",inline"`
-	Schema                      string `json:"schema,omitempty"`
-	Expression                  string `json:"pyexp"`
-	fqn                         string
-	programHash                 string
+	raptorApi.FeatureBuilderKind `json:",inline"`
+	Schema                       string `json:"schema,omitempty"`
+	Expression                   string `json:"pyexp"`
+	fqn                          string
+	programHash                  string
 }
 
 func (m *manager) registerSchema(ctx context.Context, schema string) error {
@@ -74,7 +74,7 @@ func (m *manager) registerProgram(ctx context.Context, ft *Feature) error {
 }
 
 // if a particular feature extraction has failed, it should log it and allow other to live in peace
-func (m *manager) getFeatureDefinitions(ctx context.Context, in *natunApi.DataConnector, bsc BaseStreaming) []*Feature {
+func (m *manager) getFeatureDefinitions(ctx context.Context, in *raptorApi.DataConnector, bsc BaseStreaming) []*Feature {
 	var features []*Feature
 	m.logger.Info("fetching feature definitions...")
 	for _, ref := range in.Status.Features {
@@ -92,8 +92,8 @@ func (m *manager) getFeatureDefinitions(ctx context.Context, in *natunApi.DataCo
 	}
 	return features
 }
-func (m *manager) getFeature(ctx context.Context, ref natunApi.ResourceReference, bs BaseStreaming) (*Feature, error) {
-	ftSpec := natunApi.Feature{}
+func (m *manager) getFeature(ctx context.Context, ref raptorApi.ResourceReference, bs BaseStreaming) (*Feature, error) {
+	ftSpec := raptorApi.Feature{}
 	err := m.client.Get(ctx, ref.ObjectKey(), &ftSpec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch feature definition: %w", err)

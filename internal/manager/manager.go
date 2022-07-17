@@ -1,5 +1,5 @@
 /*
-Copyright 2022 Natun.
+Copyright (c) 2022 Raptor.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,9 +21,9 @@ import (
 	"fmt"
 	"github.com/go-logr/logr"
 	"github.com/google/uuid"
-	natunApi "github.com/raptor-ml/natun/api/v1alpha1"
+	raptorApi "github.com/raptor-ml/raptor/api/v1alpha1"
 	"github.com/raptor-ml/streaming-runner/pkg/brokers"
-	pbRuntime "go.buf.build/natun/api-go/natun/core/natun/runtime/v1alpha1"
+	pbRuntime "go.buf.build/raptor/api-go/raptor/core/raptor/runtime/v1alpha1"
 	"gocloud.dev/pubsub"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/rest"
@@ -75,17 +75,17 @@ func (m *manager) Start(ctx context.Context) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	i, err := m.client.GetInformer(ctx, &natunApi.DataConnector{})
+	i, err := m.client.GetInformer(ctx, &raptorApi.DataConnector{})
 	if err != nil {
 		panic(err)
 	}
 
 	i.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
-			m.Add(ctx, obj.(*natunApi.DataConnector))
+			m.Add(ctx, obj.(*raptorApi.DataConnector))
 		},
 		UpdateFunc: func(oldObj, newObj interface{}) {
-			m.Update(ctx, oldObj.(*natunApi.DataConnector), newObj.(*natunApi.DataConnector))
+			m.Update(ctx, oldObj.(*raptorApi.DataConnector), newObj.(*raptorApi.DataConnector))
 		},
 		DeleteFunc: func(obj interface{}) {
 			m.logger.Info("DataConnector deleted. Gracefully closing...")
@@ -112,7 +112,7 @@ type BaseStreaming struct {
 	features     []*Feature
 }
 
-func (m *manager) Add(ctx context.Context, in *natunApi.DataConnector) {
+func (m *manager) Add(ctx context.Context, in *raptorApi.DataConnector) {
 	m.ready = false
 	if in.Spec.Kind != "streaming" {
 		m.logger.Error(fmt.Errorf("unsupported DataConenctor kind: %s", in.Spec.Kind), "kind is not streaming")
@@ -179,7 +179,7 @@ func (m *manager) Add(ctx context.Context, in *natunApi.DataConnector) {
 	m.logger.Info("Listening for streaming events...")
 }
 
-func (m *manager) Update(ctx context.Context, _ *natunApi.DataConnector, in *natunApi.DataConnector) {
+func (m *manager) Update(ctx context.Context, _ *raptorApi.DataConnector, in *raptorApi.DataConnector) {
 	if m.cancel != nil {
 		m.cancel()
 		m.bs = nil

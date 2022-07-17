@@ -1,5 +1,5 @@
 /*
-Copyright 2022 Natun.
+Copyright (c) 2022 Raptor.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,12 +24,12 @@ import (
 	grpcMiddleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpcZap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
 	grpcRetry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
-	natunApi "github.com/raptor-ml/natun/api/v1alpha1"
+	raptorApi "github.com/raptor-ml/raptor/api/v1alpha1"
 	_ "github.com/raptor-ml/streaming-runner/internal/brokers"
 	"github.com/raptor-ml/streaming-runner/internal/manager"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
-	pbRuntime "go.buf.build/natun/api-go/natun/core/natun/runtime/v1alpha1"
+	pbRuntime "go.buf.build/raptor/api-go/raptor/core/raptor/runtime/v1alpha1"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/local"
@@ -51,7 +51,7 @@ var setupLog logr.Logger
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(clientgoscheme.Scheme))
 
-	utilruntime.Must(natunApi.AddToScheme(clientgoscheme.Scheme))
+	utilruntime.Must(raptorApi.AddToScheme(clientgoscheme.Scheme))
 	//+kubebuilder:scaffold:scheme
 }
 
@@ -59,7 +59,7 @@ func main() {
 	pflag.Bool("production", true, "Set as production")
 	pflag.String("dataconnector-resource", "", "The resource name of the DataConnector")
 	pflag.String("dataconnector-namespace", "", "The namespace name of the DataConnector")
-	pflag.String("runtime-grpc-addr", ":60005", "The gRPC Address of the Natun Runtime")
+	pflag.String("runtime-grpc-addr", ":60005", "The gRPC Address of the Raptor Runtime")
 	pflag.Parse()
 	must(viper.BindPFlags(pflag.CommandLine))
 

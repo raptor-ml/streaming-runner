@@ -42,7 +42,7 @@ jobs:
         with:
           actions: 'create-issue'
           token: ${{ secrets.ACTIONS_PAT }}
-          repo: raptor-ml/natun
+          repo: raptor-ml/raptor
           title: 🐛 Lint failed for ${{ github.sha }}
           body: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
           labels: bug, component/streaming

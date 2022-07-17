@@ -9,7 +9,7 @@ ifneq ($(origin PROD),undefined)
 endif
 
 ifeq ($(ENV),prod)
-  CONTEXT ?= gke_natun-test_europe-west3-a_natun-test
+  CONTEXT ?= gke_raptor-test_europe-west3-a_raptor-test
   $(info $(shell tput setaf 1)-+-+ PROD MODE -+-+$(shell tput sgr0))
 else
   CONTEXT ?= kind-kind
