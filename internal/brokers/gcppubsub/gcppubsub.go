@@ -33,9 +33,10 @@ func init() {
 }
 
 type provider struct{}
+type ContextKey string
 
-const TopicContextKey = "topic"
-const ProjectIDContextKey = "project_id"
+const TopicContextKey ContextKey = "topic"
+const ProjectIDContextKey ContextKey = "project_id"
 
 func (p *provider) Metadata(ctx context.Context, msg *pubsub.Message) brokers.Metadata {
 	var md brokers.Metadata
