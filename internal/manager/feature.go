@@ -34,11 +34,10 @@ import (
 )
 
 type Feature struct {
-	raptorApi.FeatureBuilderKind `json:",inline"`
-	Schema                       string `json:"schema,omitempty"`
-	Expression                   string `json:"pyexp"`
-	fqn                          string
-	programHash                  string
+	Schema      string `json:"schema,omitempty"`
+	PyExp       string
+	fqn         string
+	programHash string
 }
 
 func (m *manager) registerSchema(ctx context.Context, schema string) error {
@@ -60,7 +59,7 @@ func (m *manager) registerProgram(ctx context.Context, ft *Feature) error {
 	resp, err := m.runtime.LoadPyExpProgram(ctx, &pbRuntime.LoadPyExpProgramRequest{
 		Uuid:    uuid,
 		Fqn:     ft.fqn,
-		Program: ft.Expression,
+		Program: ft.PyExp,
 	})
 
 	if err != nil {
@@ -105,8 +104,10 @@ func (m *manager) getFeature(ctx context.Context, ref raptorApi.ResourceReferenc
 		return nil, fmt.Errorf("failed to unmarshal feature definition: %w", err)
 	}
 
-	if ft.FeatureBuilderKind.Kind != "streaming" {
-		return nil, fmt.Errorf("feature definition kind is not supported: %s", ft.FeatureBuilderKind.Kind)
+	ft.PyExp = ftSpec.Spec.Builder.PyExp
+
+	if strings.ToLower(ftSpec.Spec.Builder.Kind) != "streaming" {
+		return nil, fmt.Errorf("feature definition kind is not supported: %s", ftSpec.Spec.Builder.Kind)
 	}
 	ft.fqn = ftSpec.FQN()
 
