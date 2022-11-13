@@ -81,9 +81,9 @@ func (p *provider) Subscribe(ctx context.Context, c v1alpha1.ParsedConfig) (cont
 	}
 
 	if cfg.ConsumerGroup == "" {
-		dc := brokers.DataConnectorFromContext(ctx)
+		dc := brokers.DataSourceFromContext(ctx)
 		if dc == nil {
-			panic("no DataConnector in context")
+			panic("no DataSource in context")
 		}
 		cfg.ConsumerGroup = fmt.Sprintf("%s.%s", dc.Name, dc.Namespace)
 	}

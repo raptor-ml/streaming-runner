@@ -39,15 +39,15 @@ type Broker interface {
 
 type ctxKey string
 
-const dataConnectorCtxKey ctxKey = "DataConnector"
+const dataSourceCtxKey ctxKey = "DataSource"
 
-func ContextWithDataConnector(ctx context.Context, dc *raptorApi.DataConnector) context.Context {
-	return context.WithValue(ctx, dataConnectorCtxKey, dc)
+func ContextWithDataSource(ctx context.Context, dc *raptorApi.DataConnector) context.Context {
+	return context.WithValue(ctx, dataSourceCtxKey, dc)
 }
-func DataConnectorFromContext(ctx context.Context) *raptorApi.DataConnector {
-	v := ctx.Value(dataConnectorCtxKey)
+func DataSourceFromContext(ctx context.Context) *raptorApi.DataConnector {
+	v := ctx.Value(dataSourceCtxKey)
 	if v == nil {
 		return nil
 	}
-	return v.(*raptorApi.DataConnector)
+	return v.(*raptorApi.DataSource)
 }
