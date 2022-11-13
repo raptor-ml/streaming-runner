@@ -57,8 +57,8 @@ func init() {
 
 func main() {
 	pflag.Bool("production", true, "Set as production")
-	pflag.String("dataconnector-resource", "", "The resource name of the DataConnector")
-	pflag.String("dataconnector-namespace", "", "The namespace name of the DataConnector")
+	pflag.String("data-source-resource", "", "The resource name of the DataSource")
+	pflag.String("data-source-namespace", "", "The namespace name of the DataSource")
 	pflag.String("runtime-grpc-addr", ":60005", "The gRPC Address of the Raptor Runtime")
 	pflag.Parse()
 	must(viper.BindPFlags(pflag.CommandLine))
@@ -70,8 +70,8 @@ func main() {
 	logger := zapr.NewLogger(zl)
 	setupLog = logger.WithName("setup")
 
-	if viper.GetString("dataconnector-resource") == "" || viper.GetString("dataconnector-namespace") == "" {
-		must(fmt.Errorf("`dataconnector-resource` and `dataconnector-namespace` are required"))
+	if viper.GetString("data-source-resource") == "" || viper.GetString("data-source-namespace") == "" {
+		must(fmt.Errorf("`data-source-resource` and `data-source-namespace` are required"))
 	}
 
 	cc, err := grpc.Dial(
@@ -89,11 +89,11 @@ func main() {
 	must(err)
 	runtime := pbRuntime.NewRuntimeServiceClient(cc)
 
-	conn := client.ObjectKey{
-		Name:      viper.GetString("dataconnector-resource"),
-		Namespace: viper.GetString("dataconnector-namespace"),
+	src := client.ObjectKey{
+		Name:      viper.GetString("data-source-resource"),
+		Namespace: viper.GetString("data-source-namespace"),
 	}
-	mgr, err := manager.New(conn, runtime, ctrl.GetConfigOrDie(), logger.WithName("manager"))
+	mgr, err := manager.New(src, runtime, ctrl.GetConfigOrDie(), logger.WithName("manager"))
 	must(err)
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)

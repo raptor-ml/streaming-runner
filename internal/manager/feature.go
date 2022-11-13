@@ -73,7 +73,7 @@ func (m *manager) registerProgram(ctx context.Context, ft *Feature) error {
 }
 
 // if a particular feature extraction has failed, it should log it and allow other to live in peace
-func (m *manager) getFeatureDefinitions(ctx context.Context, in *raptorApi.DataConnector, bsc BaseStreaming) []*Feature {
+func (m *manager) getFeatureDefinitions(ctx context.Context, in *raptorApi.DataSource, bsc BaseStreaming) []*Feature {
 	var features []*Feature
 	m.logger.Info("fetching feature definitions...")
 	for _, ref := range in.Status.Features {
@@ -135,7 +135,7 @@ func (m *manager) handle(ctx context.Context, msg *pubsub.Message, md brokers.Me
 	for _, ft := range bs.features {
 		ev := cloudevents.NewEvent()
 		ev.SetID(md.ID)
-		ev.SetSource(m.conn.String())
+		ev.SetSource(m.src.String())
 		ev.SetTime(md.Timestamp)
 		ev.SetDataSchema(ft.Schema)
 		ev.SetSubject(md.Topic)
