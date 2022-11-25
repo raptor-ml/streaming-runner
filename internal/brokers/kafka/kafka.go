@@ -48,8 +48,8 @@ func (p *provider) Metadata(_ context.Context, msg *pubsub.Message) brokers.Meta
 }
 
 type config struct {
-	Brokers       []string `json:"brokers"`
-	Topics        []string `json:"topics"`
+	Brokers       []string `mapstructure:"brokers"`
+	Topics        []string `mapstructure:"topics"`
 	ConsumerGroup string   `mapstructure:"consumer_group"`
 	ClientID      string   `mapstructure:"client_id"`
 
