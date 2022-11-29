@@ -1,6 +1,6 @@
 module github.com/raptor-ml/streaming-runner
 
-go 1.18
+go 1.1
 
 require (
 	github.com/Shopify/sarama v1.37.2
