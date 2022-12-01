@@ -20,60 +20,27 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	ceProto "github.com/cloudevents/sdk-go/binding/format/protobuf/v2"
-	cloudevents "github.com/cloudevents/sdk-go/v2"
+	"github.com/pkg/errors"
+	"github.com/raptor-ml/raptor/api"
 	raptorApi "github.com/raptor-ml/raptor/api/v1alpha1"
+	"github.com/raptor-ml/raptor/pkg/protoregistry"
 	"github.com/raptor-ml/streaming-runner/pkg/brokers"
-	pbRuntime "go.buf.build/raptor/api-go/raptor/core/raptor/runtime/v1alpha1"
 	"gocloud.dev/pubsub"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/anypb"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/dynamicpb"
 	"net/url"
 	"strings"
 )
 
 type Feature struct {
-	Schema      string `json:"schema,omitempty"`
-	PyExp       string
-	fqn         string
-	programHash string
-}
-
-func (m *manager) registerSchema(ctx context.Context, schema string) error {
-	uuid := newUUID()
-	resp, err := m.runtime.RegisterSchema(ctx, &pbRuntime.RegisterSchemaRequest{
-		Uuid:   uuid,
-		Schema: schema,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to register schema: %w", err)
-	}
-	if resp.GetUuid() != uuid {
-		return fmt.Errorf("failed to register schema: unexpected uuid")
-	}
-	return nil
-}
-func (m *manager) registerProgram(ctx context.Context, ft *Feature) error {
-	uuid := newUUID()
-	resp, err := m.runtime.LoadPyExpProgram(ctx, &pbRuntime.LoadPyExpProgramRequest{
-		Uuid:    uuid,
-		Fqn:     ft.fqn,
-		Program: ft.PyExp,
-	})
-
-	if err != nil {
-		return fmt.Errorf("failed to register program: %w", err)
-	}
-	if resp.GetUuid() != uuid {
-		return fmt.Errorf("failed to register program: unexpected uuid")
-	}
-	ft.programHash = resp.GetProgramHash()
-	return nil
+	Schema   string   `json:"schema,omitempty"`
+	Packages []string `json:"packages,omitempty"`
+	*api.FeatureDescriptor
 }
 
 // if a particular feature extraction has failed, it should log it and allow other to live in peace
-func (m *manager) getFeatureDefinitions(ctx context.Context, in *raptorApi.DataConnector, bsc BaseStreaming) []*Feature {
+func (m *manager) getFeatureDefinitions(ctx context.Context, in *raptorApi.DataSource, bsc BaseStreaming) []*Feature {
 	var features []*Feature
 	m.logger.Info("fetching feature definitions...")
 	for _, ref := range in.Status.Features {
@@ -104,12 +71,11 @@ func (m *manager) getFeature(ctx context.Context, ref raptorApi.ResourceReferenc
 		return nil, fmt.Errorf("failed to unmarshal feature definition: %w", err)
 	}
 
-	ft.PyExp = ftSpec.Spec.Builder.PyExp
-
 	if strings.ToLower(ftSpec.Spec.Builder.Kind) != "streaming" {
 		return nil, fmt.Errorf("feature definition kind is not supported: %s", ftSpec.Spec.Builder.Kind)
 	}
-	ft.fqn = ftSpec.FQN()
+
+	ft.Packages = ftSpec.Spec.Builder.Packages
 
 	if ft.Schema == "" && bs.Schema != nil {
 		ft.Schema = bs.Schema.String()
@@ -118,7 +84,7 @@ func (m *manager) getFeature(ctx context.Context, ref raptorApi.ResourceReferenc
 		u, err := url.Parse(ft.Schema)
 		if err == nil && u.Scheme != "" && u.Host != "" && u.Fragment != "" {
 			if !(bs.Schema != nil && u.Scheme == bs.Schema.Scheme && u.Host == bs.Schema.Host) {
-				err := m.registerSchema(ctx, ft.Schema)
+				_, err := protoregistry.Register(ft.Schema)
 				if err != nil {
 					return nil, fmt.Errorf("failed to register schema: %w", err)
 				}
@@ -128,70 +94,97 @@ func (m *manager) getFeature(ctx context.Context, ref raptorApi.ResourceReferenc
 		}
 	}
 
-	return ft, m.registerProgram(ctx, ft)
+	ft.FeatureDescriptor, err = api.FeatureDescriptorFromManifest(&ftSpec)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create feature descriptor: %w", err)
+	}
+
+	_, err = m.runtimeManager.LoadProgram(ft.RuntimeEnv, ft.FQN, ftSpec.Spec.Builder.Code, ft.Packages)
+	return ft, err
 }
 
 func (m *manager) handle(ctx context.Context, msg *pubsub.Message, md brokers.Metadata, bs BaseStreaming) error {
 	for _, ft := range bs.features {
-		ev := cloudevents.NewEvent()
-		ev.SetID(md.ID)
-		ev.SetSource(m.conn.String())
-		ev.SetTime(md.Timestamp)
-		ev.SetDataSchema(ft.Schema)
-		ev.SetSubject(md.Topic)
 
-		contentType := ""
-		u := url.URL{}
-		for k, v := range msg.Metadata {
-			if strings.ToLower(k) == "content-type" {
-				contentType = v
+		var jsonMsg []byte
+		var row map[string]any
+		if ft.Schema != "" {
+			u, err := url.Parse(ft.Schema)
+			if err != nil {
+				return fmt.Errorf("failed to parse data schema: %w", err)
 			}
-			u.Query().Add(k, v)
-		}
-		// Encode the parameters.
-		u.RawQuery = u.Query().Encode()
-		ev.SetExtension("headers", u)
 
-		err := ev.SetData(contentType, msg.Body)
-		if err != nil {
-			return fmt.Errorf("failed to set data: %w", err)
-		}
+			md, err := protoregistry.GetDescriptor(u.Fragment)
+			if err != nil {
+				if !errors.Is(err, protoregistry.ErrNotFound) {
+					return fmt.Errorf("failed to find proto type for message")
+				}
 
-		pb, err := ceProto.ToProto(&ev)
-		if err != nil {
-			return fmt.Errorf("failed to convert event to protobuf: %w", err)
-		}
-		data, err := anypb.New(pb)
-		if err != nil {
-			return fmt.Errorf("failed to create anypb: %w", err)
-		}
+				pack, err := protoregistry.Register(ft.Schema)
+				if err != nil && !errors.Is(err, protoregistry.ErrAlreadyRegistered) {
+					return fmt.Errorf("failed to register proto type: %w", err)
+				}
 
-		req := &pbRuntime.ExecutePyExpRequest{
-			Uuid:        newUUID(),
-			Fqn:         ft.fqn,
-			ProgramHash: ft.programHash,
-			EntityId:    nil,
-			Data:        data,
-		}
-		tries := 1
-	exec:
-		resp, err := m.runtime.ExecutePyExp(ctx, req)
-		if err != nil {
-			if status.Code(err) == codes.NotFound {
-				err := m.registerProgram(ctx, ft)
+				s := u.Fragment
+				if strings.Count(s, ".") < 1 {
+					s = fmt.Sprintf("%s.%s", pack, u.Fragment)
+				}
+				md, err = protoregistry.GetDescriptor(s)
 				if err != nil {
-					return fmt.Errorf("failed to register program: %w", err)
-				}
-				if tries < 3 {
-					tries++
-					goto exec
+					panic(fmt.Errorf("failed to get a schema that was just registered: %w", err))
 				}
 			}
-			return fmt.Errorf("failed to execute program: %w", err)
+			pm := dynamicpb.NewMessage(md)
+			err = proto.Unmarshal(msg.Body, pm)
+			if err != nil {
+				return fmt.Errorf("failed to parse message to proto: %w", err)
+			}
+
+			// marshal to the row map
+			jsonMsg, err = protojson.Marshal(pm)
+			if err != nil {
+				return fmt.Errorf("failed to marshal proto to json: %w", err)
+			}
+		} else {
+			jsonMsg = msg.Body
 		}
-		if resp.GetUuid() != req.GetUuid() {
-			return fmt.Errorf("failed to execute program: unexpected uuid")
+
+		// if schema is not provided, we assume that the message is a json
+		// now we need to unmarshal it to a map
+		err := json.Unmarshal(jsonMsg, &row)
+		if err != nil {
+			return fmt.Errorf("failed to unmarshal message: %w", err)
+		}
+		row = flattenMap(row)
+
+		keys := api.Keys{}
+		for _, k := range ft.Keys {
+			if _, ok := row[k]; !ok {
+				return fmt.Errorf("key %s is missing in the message", k)
+			}
+			keys[k] = fmt.Sprintf("%s", row[k])
+		}
+
+		_, _, err = m.runtimeManager.ExecuteProgram(ctx, ft.RuntimeEnv, ft.FQN, keys, row, md.Timestamp, false)
+		if err != nil {
+			return fmt.Errorf("failed to execute feature: %w", err)
 		}
 	}
 	return nil
+}
+
+func flattenMap(row map[string]any) map[string]any {
+	//flatten maps
+	ret := make(map[string]any)
+	for k, v := range row {
+		switch v := v.(type) {
+		case map[string]any:
+			for k1, v1 := range flattenMap(v) {
+				ret[fmt.Sprintf("%s.%s", k, k1)] = v1
+			}
+		default:
+			ret[k] = v
+		}
+	}
+	return ret
 }

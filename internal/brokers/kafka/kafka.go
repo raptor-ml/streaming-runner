@@ -48,8 +48,8 @@ func (p *provider) Metadata(_ context.Context, msg *pubsub.Message) brokers.Meta
 }
 
 type config struct {
-	Brokers       []string `json:"brokers"`
-	Topics        []string `json:"topics"`
+	Brokers       []string `mapstructure:"brokers"`
+	Topics        []string `mapstructure:"topics"`
 	ConsumerGroup string   `mapstructure:"consumer_group"`
 	ClientID      string   `mapstructure:"client_id"`
 
@@ -81,9 +81,9 @@ func (p *provider) Subscribe(ctx context.Context, c v1alpha1.ParsedConfig) (cont
 	}
 
 	if cfg.ConsumerGroup == "" {
-		dc := brokers.DataConnectorFromContext(ctx)
+		dc := brokers.DataSourceFromContext(ctx)
 		if dc == nil {
-			panic("no DataConnector in context")
+			panic("no DataSource in context")
 		}
 		cfg.ConsumerGroup = fmt.Sprintf("%s.%s", dc.Name, dc.Namespace)
 	}

@@ -21,9 +21,10 @@ import (
 	"fmt"
 	"github.com/go-logr/logr"
 	"github.com/google/uuid"
+	"github.com/raptor-ml/raptor/api"
 	raptorApi "github.com/raptor-ml/raptor/api/v1alpha1"
+	"github.com/raptor-ml/raptor/pkg/protoregistry"
 	"github.com/raptor-ml/streaming-runner/pkg/brokers"
-	pbRuntime "go.buf.build/raptor/api-go/raptor/core/raptor/runtime/v1alpha1"
 	"gocloud.dev/pubsub"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/rest"
@@ -38,20 +39,20 @@ type Manager interface {
 	Ready(context.Context) bool
 }
 type manager struct {
-	client  ctrlCache.Cache
-	logger  logr.Logger
-	cancel  context.CancelFunc
-	conn    client.ObjectKey
-	runtime pbRuntime.RuntimeServiceClient
-	bs      *BaseStreaming
-	ready   bool
+	client         ctrlCache.Cache
+	logger         logr.Logger
+	cancel         context.CancelFunc
+	src            client.ObjectKey
+	runtimeManager api.RuntimeManager
+	bs             *BaseStreaming
+	ready          bool
 }
 
-func New(conn client.ObjectKey, runtime pbRuntime.RuntimeServiceClient, cfg *rest.Config, logger logr.Logger) (Manager, error) {
+func New(src client.ObjectKey, rm api.RuntimeManager, cfg *rest.Config, logger logr.Logger) (Manager, error) {
 	c, err := ctrlCache.New(cfg, ctrlCache.Options{
-		Namespace: conn.Namespace,
+		Namespace: src.Namespace,
 		DefaultSelector: ctrlCache.ObjectSelector{
-			Field: fields.OneTermEqualSelector("metadata.name", conn.Name),
+			Field: fields.OneTermEqualSelector("metadata.name", src.Name),
 		},
 	})
 	if err != nil {
@@ -59,9 +60,9 @@ func New(conn client.ObjectKey, runtime pbRuntime.RuntimeServiceClient, cfg *res
 	}
 
 	return &manager{
-		client:  c,
-		logger:  logger,
-		runtime: runtime,
+		client:         c,
+		logger:         logger,
+		runtimeManager: rm,
 	}, nil
 }
 
@@ -75,20 +76,20 @@ func (m *manager) Start(ctx context.Context) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	i, err := m.client.GetInformer(ctx, &raptorApi.DataConnector{})
+	i, err := m.client.GetInformer(ctx, &raptorApi.DataSource{})
 	if err != nil {
 		panic(err)
 	}
 
 	i.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
-			m.Add(ctx, obj.(*raptorApi.DataConnector))
+			m.Add(ctx, obj.(*raptorApi.DataSource))
 		},
 		UpdateFunc: func(oldObj, newObj interface{}) {
-			m.Update(ctx, oldObj.(*raptorApi.DataConnector), newObj.(*raptorApi.DataConnector))
+			m.Update(ctx, oldObj.(*raptorApi.DataSource), newObj.(*raptorApi.DataSource))
 		},
 		DeleteFunc: func(obj interface{}) {
-			m.logger.Info("DataConnector deleted. Gracefully closing...")
+			m.logger.Info("DataSource deleted. Gracefully closing...")
 			cancel()
 		},
 	})
@@ -112,14 +113,14 @@ type BaseStreaming struct {
 	features     []*Feature
 }
 
-func (m *manager) Add(ctx context.Context, in *raptorApi.DataConnector) {
+func (m *manager) Add(ctx context.Context, in *raptorApi.DataSource) {
 	m.ready = false
 	if in.Spec.Kind != "streaming" {
 		m.logger.Error(fmt.Errorf("unsupported DataConenctor kind: %s", in.Spec.Kind), "kind is not streaming")
 		return
 	}
 
-	ctx = brokers.ContextWithDataConnector(ctx, in)
+	ctx = brokers.ContextWithDataSource(ctx, in)
 
 	cfg, err := in.ParseConfig(ctx, m.client)
 	if err != nil {
@@ -137,7 +138,7 @@ func (m *manager) Add(ctx context.Context, in *raptorApi.DataConnector) {
 	}
 
 	if bs.Schema != nil {
-		err := m.registerSchema(ctx, bs.Schema.String())
+		_, err := protoregistry.Register(bs.Schema.String())
 		if err != nil {
 			m.logger.Error(err, "failed to register schema")
 			return
@@ -157,7 +158,7 @@ func (m *manager) Add(ctx context.Context, in *raptorApi.DataConnector) {
 	m.cancel = cancel
 
 	// Create a new subscription
-	ctx = brokers.ContextWithDataConnector(ctx, in)
+	ctx = brokers.ContextWithDataSource(ctx, in)
 	ctx, bs.subscription, err = broker.Subscribe(ctx, cfg)
 	if err != nil {
 		m.logger.Error(err, "failed to create subscription")
@@ -179,7 +180,7 @@ func (m *manager) Add(ctx context.Context, in *raptorApi.DataConnector) {
 	m.logger.Info("Listening for streaming events...")
 }
 
-func (m *manager) Update(ctx context.Context, _ *raptorApi.DataConnector, in *raptorApi.DataConnector) {
+func (m *manager) Update(ctx context.Context, _ *raptorApi.DataSource, in *raptorApi.DataSource) {
 	if m.cancel != nil {
 		m.cancel()
 		m.bs = nil
