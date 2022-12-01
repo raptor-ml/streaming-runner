@@ -41,10 +41,10 @@ type ctxKey string
 
 const dataSourceCtxKey ctxKey = "DataSource"
 
-func ContextWithDataSource(ctx context.Context, dc *raptorApi.DataConnector) context.Context {
+func ContextWithDataSource(ctx context.Context, dc *raptorApi.DataSource) context.Context {
 	return context.WithValue(ctx, dataSourceCtxKey, dc)
 }
-func DataSourceFromContext(ctx context.Context) *raptorApi.DataConnector {
+func DataSourceFromContext(ctx context.Context) *raptorApi.DataSource {
 	v := ctx.Value(dataSourceCtxKey)
 	if v == nil {
 		return nil

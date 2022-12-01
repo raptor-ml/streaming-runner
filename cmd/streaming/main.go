@@ -21,18 +21,13 @@ import (
 	"fmt"
 	"github.com/go-logr/logr"
 	"github.com/go-logr/zapr"
-	grpcMiddleware "github.com/grpc-ecosystem/go-grpc-middleware"
-	grpcZap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
-	grpcRetry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	raptorApi "github.com/raptor-ml/raptor/api/v1alpha1"
+	"github.com/raptor-ml/raptor/pkg/runtimemanager"
 	_ "github.com/raptor-ml/streaming-runner/internal/brokers"
 	"github.com/raptor-ml/streaming-runner/internal/manager"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
-	pbRuntime "go.buf.build/raptor/api-go/raptor/core/raptor/runtime/v1alpha1"
 	"go.uber.org/zap"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/local"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"os"
@@ -59,7 +54,6 @@ func main() {
 	pflag.Bool("production", true, "Set as production")
 	pflag.String("data-source-resource", "", "The resource name of the DataSource")
 	pflag.String("data-source-namespace", "", "The namespace name of the DataSource")
-	pflag.String("runtime-grpc-addr", ":60005", "The gRPC Address of the Raptor Runtime")
 	pflag.Parse()
 	must(viper.BindPFlags(pflag.CommandLine))
 
@@ -74,26 +68,14 @@ func main() {
 		must(fmt.Errorf("`data-source-resource` and `data-source-namespace` are required"))
 	}
 
-	cc, err := grpc.Dial(
-		viper.GetString("runtime-grpc-addr"),
-		grpc.WithStreamInterceptor(grpcMiddleware.ChainStreamClient(
-			grpcZap.StreamClientInterceptor(zl.Named("runtime")),
-			grpcRetry.StreamClientInterceptor(),
-		)),
-		grpc.WithUnaryInterceptor(grpcMiddleware.ChainUnaryClient(
-			grpcZap.UnaryClientInterceptor(zl.Named("runtime")),
-			grpcRetry.UnaryClientInterceptor(),
-		)),
-		grpc.WithTransportCredentials(local.NewCredentials()),
-	)
+	rm, err := runtimemanager.New(nil, "", "")
 	must(err)
-	runtime := pbRuntime.NewRuntimeServiceClient(cc)
 
 	src := client.ObjectKey{
 		Name:      viper.GetString("data-source-resource"),
 		Namespace: viper.GetString("data-source-namespace"),
 	}
-	mgr, err := manager.New(src, runtime, ctrl.GetConfigOrDie(), logger.WithName("manager"))
+	mgr, err := manager.New(src, rm, ctrl.GetConfigOrDie(), logger.WithName("manager"))
 	must(err)
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)

@@ -21,9 +21,10 @@ import (
 	"fmt"
 	"github.com/go-logr/logr"
 	"github.com/google/uuid"
+	"github.com/raptor-ml/raptor/api"
 	raptorApi "github.com/raptor-ml/raptor/api/v1alpha1"
+	"github.com/raptor-ml/raptor/pkg/protoregistry"
 	"github.com/raptor-ml/streaming-runner/pkg/brokers"
-	pbRuntime "go.buf.build/raptor/api-go/raptor/core/raptor/runtime/v1alpha1"
 	"gocloud.dev/pubsub"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/rest"
@@ -38,16 +39,16 @@ type Manager interface {
 	Ready(context.Context) bool
 }
 type manager struct {
-	client  ctrlCache.Cache
-	logger  logr.Logger
-	cancel  context.CancelFunc
-	src     client.ObjectKey
-	runtime pbRuntime.RuntimeServiceClient
-	bs      *BaseStreaming
-	ready   bool
+	client         ctrlCache.Cache
+	logger         logr.Logger
+	cancel         context.CancelFunc
+	src            client.ObjectKey
+	runtimeManager api.RuntimeManager
+	bs             *BaseStreaming
+	ready          bool
 }
 
-func New(src client.ObjectKey, runtime pbRuntime.RuntimeServiceClient, cfg *rest.Config, logger logr.Logger) (Manager, error) {
+func New(src client.ObjectKey, rm api.RuntimeManager, cfg *rest.Config, logger logr.Logger) (Manager, error) {
 	c, err := ctrlCache.New(cfg, ctrlCache.Options{
 		Namespace: src.Namespace,
 		DefaultSelector: ctrlCache.ObjectSelector{
@@ -59,9 +60,9 @@ func New(src client.ObjectKey, runtime pbRuntime.RuntimeServiceClient, cfg *rest
 	}
 
 	return &manager{
-		client:  c,
-		logger:  logger,
-		runtime: runtime,
+		client:         c,
+		logger:         logger,
+		runtimeManager: rm,
 	}, nil
 }
 
@@ -137,7 +138,7 @@ func (m *manager) Add(ctx context.Context, in *raptorApi.DataSource) {
 	}
 
 	if bs.Schema != nil {
-		err := m.registerSchema(ctx, bs.Schema.String())
+		_, err := protoregistry.Register(bs.Schema.String())
 		if err != nil {
 			m.logger.Error(err, "failed to register schema")
 			return
