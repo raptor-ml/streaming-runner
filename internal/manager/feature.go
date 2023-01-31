@@ -46,7 +46,7 @@ func (m *manager) getFeatureDefinitions(ctx context.Context, in *raptorApi.DataS
 	for _, ref := range in.Status.Features {
 		m.logger.V(1).Info(fmt.Sprintf("fetching feature definition: %s", ref.Name))
 
-		// fix connector namespace
+		// fix source namespace
 		if ref.Namespace == "" {
 			ref.Namespace = in.Namespace
 		}

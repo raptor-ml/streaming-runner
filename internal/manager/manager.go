@@ -78,10 +78,10 @@ func (m *manager) Start(ctx context.Context) error {
 
 	i, err := m.client.GetInformer(ctx, &raptorApi.DataSource{})
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("failed to get DataSource informer: %w", err)
 	}
 
-	i.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	_, err = i.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			m.Add(ctx, obj.(*raptorApi.DataSource))
 		},
@@ -93,6 +93,9 @@ func (m *manager) Start(ctx context.Context) error {
 			cancel()
 		},
 	})
+	if err != nil {
+		return fmt.Errorf("failed to add DataSource event handler: %w", err)
+	}
 	go func() {
 		<-ctx.Done()
 		if m.cancel != nil {
