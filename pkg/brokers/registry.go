@@ -20,7 +20,7 @@ import (
 	"fmt"
 )
 
-//# Brokers registry
+// # Brokers registry
 var brokers = make(map[string]Broker)
 
 // Register registers a broker

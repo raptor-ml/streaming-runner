@@ -64,15 +64,16 @@ check-license:  ## Check the headers for the license.
 
 ##@ Build
 
+LDFLAGS ?= -s -w
+LDFLAGS += -X main.version=$(VERSION)
+
 .PHONY: build
 build: fmt lint ## Build core binary.
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-		-ldflags="-s -w -X main.version=\${{ steps.version.outputs.version }}" \
-		-o bin/runner cmd/streaming/*
+	go build -ldflags="${LDFLAGS}" -a -o bin/runner cmd/streaming/*
 
 .PHONY: docker-build
-docker-build: build ## Build docker image with the Runner.
-	docker build -t ${IMAGE_BASE}:${VERSION} . -f hack/release.Dockerfile
+docker-build: ## Build docker image with the Runner.
+	DOCKER_BUILDKIT=1 docker build --build-arg LDFLAGS="${LDFLAGS}" --build-arg VERSION="${VERSION}" -t ${IMAGE_BASE}:${VERSION} -t ${IMAGE_BASE}:latest .
 
 .PHONY: kind-load
 kind-load: ## Load the runner into kind.
