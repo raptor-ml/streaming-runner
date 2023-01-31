@@ -3,6 +3,7 @@ module github.com/raptor-ml/streaming-runner
 go 1.19
 
 require (
+	cloud.google.com/go/pubsub v1.28.0
 	github.com/Shopify/sarama v1.38.1
 	github.com/go-logr/logr v1.2.3
 	github.com/go-logr/zapr v1.2.3
@@ -18,7 +19,6 @@ require (
 	gocloud.dev v0.28.0
 	gocloud.dev/pubsub/kafkapubsub v0.28.0
 	golang.org/x/oauth2 v0.4.0
-	google.golang.org/genproto v0.0.0-20230127162408-596548ed4efa
 	google.golang.org/protobuf v1.28.1
 	k8s.io/apimachinery v0.26.1
 	k8s.io/client-go v0.26.1
@@ -29,7 +29,6 @@ require (
 	cloud.google.com/go/compute v1.18.0 // indirect
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
 	cloud.google.com/go/iam v0.10.0 // indirect
-	cloud.google.com/go/pubsub v1.28.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
@@ -111,6 +110,7 @@ require (
 	gomodules.xyz/jsonpatch/v2 v2.2.0 // indirect
 	google.golang.org/api v0.108.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
+	google.golang.org/genproto v0.0.0-20230127162408-596548ed4efa // indirect
 	google.golang.org/grpc v1.52.3 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect

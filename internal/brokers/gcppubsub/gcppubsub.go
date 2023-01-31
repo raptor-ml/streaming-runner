@@ -19,13 +19,14 @@ package gcppubsub
 import (
 	"context"
 	"fmt"
+
+	pb "cloud.google.com/go/pubsub/apiv1/pubsubpb"
 	"github.com/raptor-ml/raptor/api/v1alpha1"
 	"github.com/raptor-ml/streaming-runner/pkg/brokers"
 	"gocloud.dev/gcp"
 	"gocloud.dev/pubsub"
 	"gocloud.dev/pubsub/gcppubsub"
 	"golang.org/x/oauth2/google"
-	pb "google.golang.org/genproto/googleapis/pubsub/v1"
 )
 
 func init() {
