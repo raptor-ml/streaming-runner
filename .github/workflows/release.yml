@@ -25,16 +25,15 @@ jobs:
         with:
           fetch-depth: 0
       - name: Conventional Changelog Action
-              id: version
-              uses: TriPSs/conventional-changelog-action@v3
-              with:
-                release-count: '1'
-                skip-version-file: 'true'
-                skip-commit: 'true'
-                skip-git-pull: 'true'
-                git-push: 'false'
-                git-path: ". '!:labsdk'"
-                tag-prefix: 'v'
+        id: version
+        uses: TriPSs/conventional-changelog-action@v3
+        with:
+          release-count: '1'
+          skip-version-file: 'true'
+          skip-commit: 'true'
+          skip-git-pull: 'true'
+          git-push: 'false'
+          tag-prefix: 'v'
       - name: Setup Go environment
         uses: actions/setup-go@v3
         with:
