@@ -71,9 +71,11 @@ LDFLAGS += -X main.version=$(VERSION)
 build: fmt lint ## Build core binary.
 	go build -ldflags="${LDFLAGS}" -a -o bin/runner cmd/streaming/*
 
+DOCKER_BUILD_FLAGS ?= --load
+
 .PHONY: docker-build
 docker-build: ## Build docker image with the Runner.
-	DOCKER_BUILDKIT=1 docker build --build-arg LDFLAGS="${LDFLAGS}" --build-arg VERSION="${VERSION}" -t ${IMAGE_BASE}:${VERSION} -t ${IMAGE_BASE}:latest .
+	docker buildx build ${DOCKER_BUILD_FLAGS} --build-arg LDFLAGS="${LDFLAGS}" --build-arg VERSION="${VERSION}" -t ${IMAGE_BASE}:${VERSION} -t ${IMAGE_BASE}:latest .
 
 .PHONY: kind-load
 kind-load: ## Load the runner into kind.
