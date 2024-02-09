@@ -21,7 +21,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"github.com/Shopify/sarama"
+	"github.com/IBM/sarama"
 	"github.com/raptor-ml/raptor/api/v1alpha1"
 	"github.com/raptor-ml/streaming-runner/pkg/brokers"
 	"gocloud.dev/pubsub"
