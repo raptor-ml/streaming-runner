@@ -50,9 +50,10 @@ type manager struct {
 
 func New(src client.ObjectKey, rm api.RuntimeManager, cfg *rest.Config, logger logr.Logger) (Manager, error) {
 	c, err := ctrlCache.New(cfg, ctrlCache.Options{
-		Namespace: src.Namespace,
-		DefaultSelector: ctrlCache.ObjectSelector{
-			Field: fields.OneTermEqualSelector("metadata.name", src.Name),
+		DefaultNamespaces: map[string]ctrlCache.Config{
+			src.Namespace: {
+				FieldSelector: fields.OneTermEqualSelector("metadata.name", src.Name),
+			},
 		},
 	})
 	if err != nil {
