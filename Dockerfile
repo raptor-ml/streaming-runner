@@ -1,5 +1,3 @@
-ARG TARGETOS=linux
-ARG TARGETARCH=amd64
 ARG LDFLAGS
 ARG VERSION
 
@@ -17,7 +15,7 @@ COPY . /workspace
 
 ### Core
 FROM build AS build
-RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -ldflags="${LDFLAGS}" -o /out/runner cmd/streaming/*.go
+RUN CGO_ENABLED=0 go build -ldflags="${LDFLAGS}" -o /out/runner cmd/streaming/*.go
 
 FROM gcr.io/distroless/static:nonroot as runner
 ARG VERSION
